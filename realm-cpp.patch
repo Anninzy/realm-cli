@@ -1,0 +1,32 @@
+--- a/tools/cmake/Config.cmake.in
++++ b/tools/cmake/Config.cmake.in
+@@ -4,15 +4,21 @@ include("${CMAKE_CURRENT_LIST_DIR}/@PROJECT_NAME@Targets.cmake")
+ 
+ include(CMakeFindDependencyMacro)
+ 
+-# on Apple platforms we use the built-in CFRunLoop
+-# on WebAssembly we use an Emscripten-specific Scheduler and runloop
+-# everywhere else it's libuv, except UWP where it doesn't build
+-if(NOT APPLE AND NOT EMSCRIPTEN AND NOT WINDOWS_STORE AND NOT ANDROID)
+-  set(REALM_HAVE_UV 1)
+-  find_package(libuv REQUIRED)
+-  find_dependency(libuv)
++find_dependency(PkgConfig)
++pkg_check_modules(LibUV REQUIRED IMPORTED_TARGET libuv)
++if(NOT TARGET LibUV::LibUV)
++  add_library(LibUV::LibUV INTERFACE IMPORTED)
++  target_link_libraries(LibUV::LibUV INTERFACE PkgConfig::LibUV)
+ endif()
+ 
+-find_package(Realm CONFIG REQUIRED)
++find_dependency(OpenSSL)
++find_dependency(ZLIB)
++find_dependency(Threads)
++include("${CMAKE_CURRENT_LIST_DIR}/../share/cmake/Realm/RealmTargets.cmake")
++foreach(_realm_target IN ITEMS Storage QueryParser ObjectStore)
++  if(TARGET Realm::${_realm_target} AND NOT TARGET ${_realm_target})
++    add_library(${_realm_target} ALIAS Realm::${_realm_target})
++  endif()
++endforeach()
+ 
+ check_required_components(@PROJECT_NAME@)
